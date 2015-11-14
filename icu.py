@@ -4,8 +4,9 @@ import getopt, sys
 import geocoder
 import  pywapi
 import string
-import ephem
-from twilio.rest import TwilioRestClient
+import ephem	# for Satellite info
+import pygame	# for audio
+from twilio.rest import TwilioRestClient # for SMS
 
 def main(argv):
 
@@ -23,6 +24,13 @@ def main(argv):
 	body="NOTIFIED, YO!",  
 	)
 	###########################################################
+
+	# CONFIGURE AUDIO
+	pygame.mixer.init()
+	pygame.mixer.music.load('rectrans.wav')
+	pygame.mixer.music.play()
+	while pygame.mixer.music.get_busy() == True:
+		continue
 
 	try:
 		opts, args = getopt.getopt(sys.argv[1:], "z:s:")
