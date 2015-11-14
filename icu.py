@@ -4,6 +4,8 @@ import getopt, sys
 import geocoder
 import  pywapi
 import string
+import urllib2
+import json
 import ephem	# for Satellite info
 import pygame	# for audio
 from twilio.rest import TwilioRestClient # for SMS
@@ -18,6 +20,7 @@ def main(argv):
 
 	# TWILIO SMS NOTIFICATION TEST
 	###########################################################
+	# Send this prior to viewable event
 	client.messages.create(
 	to="(703) 286-9168", 
 	from_="+13012653352", 
@@ -28,9 +31,12 @@ def main(argv):
 	# CONFIGURE AUDIO
 	pygame.mixer.init()
 	pygame.mixer.music.load('rectrans.wav')
+	###########################################################
+	# Play this 15 mins prior to viewable event
 	pygame.mixer.music.play()
 	while pygame.mixer.music.get_busy() == True:
 		continue
+	###########################################################
 
 	try:
 		opts, args = getopt.getopt(sys.argv[1:], "z:s:")
@@ -61,6 +67,14 @@ def main(argv):
 	weather_com_result = pywapi.get_weather_from_weather_com(zipCode)
 	current_conditions = weather_com_result['current_conditions']['text']
 	print ("current conditions", current_conditions)
+
+	#############################################################################
+	# Call openweathermap API
+	# Info about url: API call that contains latitude, longitude, forecast day count, and API key (obtained upon signup)
+	url = 'http://api.openweathermap.org/data/2.5/forecast/daily?lat=g.lat&lon=g.lngi&cnt=16&APPID=c4758036688a08a0796290e8f5ebbe40'
+	forecast = urllib2.urlopen(url)
+	print("16-day forecast: ", json.loads(forecast.read()))
+	##############################################################################
 
 	##############################################################################
 #	satellite = "VANGUARD 3"
