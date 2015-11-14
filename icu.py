@@ -9,8 +9,43 @@ import json
 import ephem	# for Satellite info
 import pygame	# for audio
 from twilio.rest import TwilioRestClient # for SMS
+import RPi.GPIO as GPIO  # for LED's
+from threading import Thread
+import sys
+import time
+
+# LED thread
+def flashLED():
+	LED_PORT = 12 # GPIO pin 18
+	GPIO.setmode(GPIO.BOARD)
+	GPIO.setup(LED_PORT, GPIO.OUT) # configure GPIO as output
+
+	for count in [1, 2, 3]:
+		GPIO.output(LED_PORT, GPIO.HIGH)
+		time.sleep(0.5) # blocking
+		GPIO.output(LED_PORT, GPIO.LOW)
+		time.sleep(0.5)
+
+# Audio thread
+def playSound():
+	# CONFIGURE AUDIO
+	pygame.mixer.init()
+	pygame.mixer.music.load('rectrans.wav')
+
+	# Play the sound
+	pygame.mixer.music.play()
+	while pygame.mixer.music.get_busy() == True:
+		continue
 
 def notify():
+	# Flash LED on a separate thread
+	led_thread=Thread(target=flashLED, args=())
+	led_thread.start()
+
+	# Play sound on a separate thread
+	sound_thread=Thread(target=playSound, args=())
+	sound.thread.start()
+
 	# TWILIO CREDENTIALS
 	ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
 	AUTH_TOKEN = "a3b144fabe06b268541eff165f9b1387"
@@ -18,26 +53,16 @@ def notify():
 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
 
 	# TWILIO SMS NOTIFICATION TEST
-	###########################################################
 	# Send this prior to viewable event
 	client.messages.create(
 	to="(703) 286-9168", 
 	from_="+13012653352", 
-	body="NOTIFIED, YO!",  
+	body="I just want a different message this time",  
 	)
-	###########################################################
-
-	# CONFIGURE AUDIO
-	pygame.mixer.init()
-	pygame.mixer.music.load('rectrans.wav')
-	###########################################################
-	# Play this 15 mins prior to viewable event
-	pygame.mixer.music.play()
-	while pygame.mixer.music.get_busy() == True:
-		continue
-	##########################################################
 
 def main(argv):
+
+	notify()
 
 	try:
 		opts, args = getopt.getopt(sys.argv[1:], "z:s:")
