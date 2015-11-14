@@ -73,9 +73,6 @@ def main(argv):
 	zipCode = None
 	NORAD_CatalogNumber = None
 
-	print("zip code", zipCode)
-	print("NORAD catalog number", NORAD_CatalogNumber)	
-
 	for o, a in opts:
 		if o == "-z":
 			zipCode = a
@@ -85,21 +82,21 @@ def main(argv):
 	print("zip code", zipCode)
 	print("NORAD catalog number", NORAD_CatalogNumber)
 
-	if zipCode != None:
-		g = geocoder.google(zipCode)
-		location = g.latlng
-		print("location", location) # Longitude and latitude.
-
-	# weather_com_result = pywapi.get_weather_from_weather_com(zipCode)
-	# current_conditions = weather_com_result['current_conditions']['text']
-	# print ("current conditions", current_conditions)
-
 	#############################################################################
 	# Call openweathermap API
 	# Info about url: API call that contains latitude, longitude, forecast day count, and API key (obtained upon signup)
-	url = 'http://api.openweathermap.org/data/2.5/forecast/daily?lat=' + str(g.lat) + '&lon=' + str(g.lng) + '&cnt=16&APPID=c4758036688a08a0796290e8f5ebbe40'
-	forecast = urllib2.urlopen(url)
-	print("16-day forecast: ", json.loads(forecast.read()))
+	if zipCode != None:
+
+		g = geocoder.google(zipCode)
+		url = 'http://api.openweathermap.org/data/2.5/forecast/daily?lat=' + str(g.lat) + '&lon=' + str(g.lng) + '&cnt=16&APPID=c4758036688a08a0796290e8f5ebbe40'
+		forecast = urllib2.urlopen(url)
+		forecast_json = json.loads(forecast.read())
+		print("Printing 16-day forecast: ")
+		print (forecast_json)
+		weatherCondition = [False] * 16
+		for i in range(len(weatherCondition)):
+			weatherCondition[i] = forecast_json["list"][i]["clouds"] <= 20
+
 	##############################################################################
 
 	##############################################################################
