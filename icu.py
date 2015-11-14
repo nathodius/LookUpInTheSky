@@ -7,36 +7,37 @@ import string
 import urllib2
 import json
 import ephem	# for Satellite info
-#import pygame	# for audio
-#from twilio.rest import TwilioRestClient # for SMS
+import pygame	# for audio
+from twilio.rest import TwilioRestClient # for SMS
+
+def notify():
+	# TWILIO CREDENTIALS
+	ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
+	AUTH_TOKEN = "a3b144fabe06b268541eff165f9b1387"
+
+	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+
+	# TWILIO SMS NOTIFICATION TEST
+	###########################################################
+	# Send this prior to viewable event
+	client.messages.create(
+	to="(703) 286-9168", 
+	from_="+13012653352", 
+	body="NOTIFIED, YO!",  
+	)
+	###########################################################
+
+	# CONFIGURE AUDIO
+	pygame.mixer.init()
+	pygame.mixer.music.load('rectrans.wav')
+	###########################################################
+	# Play this 15 mins prior to viewable event
+	pygame.mixer.music.play()
+	while pygame.mixer.music.get_busy() == True:
+		continue
+	##########################################################
 
 def main(argv):
-
-	# # TWILIO CREDENTIALS
-	# ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
-	# AUTH_TOKEN = "a3b144fabe06b268541eff165f9b1387"
-
-	# client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
-
-	# # TWILIO SMS NOTIFICATION TEST
-	# ###########################################################
-	# # Send this prior to viewable event
-	# client.messages.create(
-	# to="(703) 286-9168", 
-	# from_="+13012653352", 
-	# body="NOTIFIED, YO!",  
-	# )
-	# ###########################################################
-
-	# # CONFIGURE AUDIO
-	# pygame.mixer.init()
-	# pygame.mixer.music.load('rectrans.wav')
-	# ###########################################################
-	# # Play this 15 mins prior to viewable event
-	# pygame.mixer.music.play()
-	# while pygame.mixer.music.get_busy() == True:
-	# 	continue
-	###########################################################
 
 	try:
 		opts, args = getopt.getopt(sys.argv[1:], "z:s:")
