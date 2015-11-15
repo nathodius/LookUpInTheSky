@@ -13,6 +13,11 @@ import RPi.GPIO as GPIO  # for LED's
 from threading import Thread
 import sys
 import time
+import antigravity
+
+# Global variable to keep track of time.
+# Audio and LED notifications should be on for 10 mins
+snap_time = time.time() # Gets current time in seconds
 
 # LED thread
 def flashLED():
@@ -21,11 +26,11 @@ def flashLED():
 	GPIO.setwarnings(False)
 	GPIO.setup(LED_PORT, GPIO.OUT) # configure GPIO as output
 
-	for count in [1, 2, 3]:
+	while ((time.time() - snap_time) / 60) < 10:
 		GPIO.output(LED_PORT, GPIO.HIGH)
-		time.sleep(0.5) # blocking
+		time.sleep(1) # blocking
 		GPIO.output(LED_PORT, GPIO.LOW)
-		time.sleep(0.5)
+		time.sleep(1)
 
 # Audio thread
 def playSound():
@@ -33,12 +38,17 @@ def playSound():
 	pygame.mixer.init()
 	pygame.mixer.music.load('rectrans.wav')
 
-	# Play the sound
-	pygame.mixer.music.play()
-	while pygame.mixer.music.get_busy() == True:
-		continue
+	# Play the sound (for 10 mins)
+	while ((time.time() - snap_time) / 60) < 10:
+		pygame.mixer.music.play()
+		time.sleep(3)
+		while pygame.mixer.music.get_busy() == True:
+			continue
 
 def notify():
+	# Save snapshot of time at the moment this function is invoked
+	snap_time = time.time() # Wall time (vs. process time, to bypass sleep())
+
 	# Flash LED on a separate thread
 	led_thread=Thread(target=flashLED, args=())
 	led_thread.start()
@@ -58,7 +68,7 @@ def notify():
 	client.messages.create(
 	to="(703) 286-9168", 
 	from_="+13012653352", 
-	body="The aliens are gonna destroy us!",  
+	body="The aliens are gonna destroy us! Nah, your satellite is about to be visible.",  
 	)
 
 def main(argv):
