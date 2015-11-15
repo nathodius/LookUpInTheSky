@@ -7,9 +7,9 @@ import string
 import urllib2
 import json
 import ephem	# for Satellite info
-#import pygame	# for audio
-#from twilio.rest import TwilioRestClient # for SMS
-#import RPi.GPIO as GPIO  # for LED's
+import pygame	# for audio
+from twilio.rest import TwilioRestClient # for SMS
+import RPi.GPIO as GPIO  # for LED's
 from threading import Thread
 import sys
 import time
@@ -74,52 +74,61 @@ def get_next_pass(lon, lat, alt, tle):
 		"visible": visible
 	}
 
+# Global variable to keep track of time.
+# Audio and LED notifications should be on for 10 mins
+snap_time = time.time() # Gets current time in seconds
+
 # LED thread
-# def flashLED():
-# 	LED_PORT = 12 # GPIO pin 18
-# 	GPIO.setmode(GPIO.BOARD)
-# 	GPIO.setwarnings(False)
-# 	GPIO.setup(LED_PORT, GPIO.OUT) # configure GPIO as output
+def flashLED():
+	LED_PORT = 12 # GPIO pin 18
+	GPIO.setmode(GPIO.BOARD)
+	GPIO.setwarnings(False)
+	GPIO.setup(LED_PORT, GPIO.OUT) # configure GPIO as output
 
-# 	for count in [1, 2, 3]:
-# 		GPIO.output(LED_PORT, GPIO.HIGH)
-# 		time.sleep(0.5) # blocking
-# 		GPIO.output(LED_PORT, GPIO.LOW)
-# 		time.sleep(0.5)
+	while ((time.time() - snap_time) / 60) < 10:
+		GPIO.output(LED_PORT, GPIO.HIGH)
+		time.sleep(1) # blocking
+		GPIO.output(LED_PORT, GPIO.LOW)
+		time.sleep(1)
 
-# # Audio thread
-# def playSound():
-# 	# CONFIGURE AUDIO
-# 	pygame.mixer.init()
-# 	pygame.mixer.music.load('rectrans.wav')
+# Audio thread
+def playSound():
+	# CONFIGURE AUDIO
+	pygame.mixer.init()
+	pygame.mixer.music.load('rectrans.wav')
 
-# 	# Play the sound
-# 	pygame.mixer.music.play()
-# 	while pygame.mixer.music.get_busy() == True:
-# 		continue
+	# Play the sound (for 10 mins)
+	while ((time.time() - snap_time) / 60) < 10:
+		pygame.mixer.music.play()
+		time.sleep(3)
+		while pygame.mixer.music.get_busy() == True:
+			continue
 
-# def notify():
-# 	# Flash LED on a separate thread
-# 	led_thread=Thread(target=flashLED, args=())
-# 	led_thread.start()
+def notify():
+	# Save snapshot of time at the moment this function is invoked
+	snap_time = time.time() # Wall time (vs. process time, to bypass sleep())
 
-# 	# Play sound on a separate thread
-# 	sound_thread=Thread(target=playSound, args=())
-# 	sound_thread.start()
+	# Flash LED on a separate thread
+	led_thread=Thread(target=flashLED, args=())
+	led_thread.start()
 
-# 	# TWILIO CREDENTIALS
-# 	ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
-# 	AUTH_TOKEN = "a3b144fabe06b268541eff165f9b1387"
+	# Play sound on a separate thread
+	sound_thread=Thread(target=playSound, args=())
+	sound_thread.start()
 
-# 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+	# TWILIO CREDENTIALS
+	ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
+	AUTH_TOKEN = "a3b144fabe06b268541eff165f9b1387"
 
-# 	# TWILIO SMS NOTIFICATION TEST
-# 	# Send this prior to viewable event
-# 	client.messages.create(
-# 	to="(703) 286-9168", 
-# 	from_="+13012653352", 
-# 	body="The aliens are gonna destroy us!",  
-# 	)
+	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+
+	# TWILIO SMS NOTIFICATION TEST
+	# Send this prior to viewable event
+	client.messages.create(
+	to="(703) 286-9168", 
+	from_="+13012653352", 
+	body="The aliens are gonna destroy us! Nah, your satellite is about to be visible.",  
+	)
 
 def main(argv):
 
@@ -179,28 +188,6 @@ def main(argv):
 		tle.compute(start_time)
 		pre_lines[0] = NORAD_CatalogNumber
 		print get_next_pass(lng_rad, lat_rad, tle.elevation, pre_lines)
-
-	##############################################################################
-
-	##############################################################################
-#	satellite = "VANGUARD 3"
-#	line1 = "1 00020U 59007A   15315.53193246  .00000593  00000-0  24329-3 0  9991"
-#	line2 = "2 00020  33.3468  44.5961 1669346 358.5309   1.0765 11.55084888 36273"
-	
-#	lat = str(g.lat)
-#	lng = str(g.lng)
-#	print(lat)
-#	print(lng)
-
-	# Read TLE
-#	tle = ephem.readtle(satellite, line1, line2)
-
-	# Compute TLE after setting the datetime
-#	observer = ephem.Observer()
-#	observer.lat = str(g.lat)
-#	observer.long = str(g.lng)
-	#tle.compute(ephem.Observer())
-	##############################################################################
 
 
 if __name__ == "__main__":
