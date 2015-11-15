@@ -13,8 +13,11 @@ import RPi.GPIO as GPIO  # for LED's
 from threading import Thread
 import sys
 import time
+import datetime
+from BeautifulSoup import BeautifulSoup
+from datetime import datetime
 
-# LED thread
+LED thread
 def flashLED():
 	LED_PORT = 12 # GPIO pin 18
 	GPIO.setmode(GPIO.BOARD)
@@ -63,7 +66,7 @@ def notify():
 
 def main(argv):
 
-	notify()
+	# notify()
 
 	try:
 		opts, args = getopt.getopt(sys.argv[1:], "z:s:")
@@ -86,17 +89,39 @@ def main(argv):
 	#############################################################################
 	# Call openweathermap API
 	# Info about url: API call that contains latitude, longitude, forecast day count, and API key (obtained upon signup)
-	if zipCode != None:
+	if (zipCode != None) and (NORAD_CatalogNumber != None):
 
 		g = geocoder.google(zipCode)
-		url = 'http://api.openweathermap.org/data/2.5/forecast/daily?lat=' + str(g.lat) + '&lon=' + str(g.lng) + '&cnt=16&APPID=c4758036688a08a0796290e8f5ebbe40'
-		forecast = urllib2.urlopen(url)
+		weather_url = 'http://api.openweathermap.org/data/2.5/forecast/daily?lat=' + str(g.lat) + '&lon=' + str(g.lng) + '&cnt=16&APPID=c4758036688a08a0796290e8f5ebbe40'
+		forecast = urllib2.urlopen(weather_url)
 		forecast_json = json.loads(forecast.read())
 		print("Printing 16-day forecast: ")
 		print (forecast_json)
 		weatherCondition = [False] * 16
 		for i in range(len(weatherCondition)):
 			weatherCondition[i] = forecast_json["list"][i]["clouds"] <= 20
+
+		NORAD_CatalogNumber_url = 'http://www.celestrak.com/cgi-bin/TLE.pl?CATNR=' + NORAD_CatalogNumber
+		tle = urllib2.urlopen(NORAD_CatalogNumber_url)
+		tle_json = json.loads(json.dumps(tle.read()))
+		print("Printing tle data: ")
+		print (tle_json)
+		parsed_html = BeautifulSoup(tle_json)
+		html_pre = parsed_html.body.find('pre').text
+		pre_lines = html_pre.split('\n')
+		line1 = pre_lines[1]
+		line2 = pre_lines[2]
+		tle = ephem.readtle(NORAD_CatalogNumber, line1, line2)
+		start_time = datetime.utcnow()
+		tle.compute(start_time)
+		print(tle.elevation)
+
+
+
+
+
+
+
 
 	##############################################################################
 
