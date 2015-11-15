@@ -7,62 +7,119 @@ import string
 import urllib2
 import json
 import ephem	# for Satellite info
-import pygame	# for audio
-from twilio.rest import TwilioRestClient # for SMS
-import RPi.GPIO as GPIO  # for LED's
+#import pygame	# for audio
+#from twilio.rest import TwilioRestClient # for SMS
+#import RPi.GPIO as GPIO  # for LED's
 from threading import Thread
 import sys
 import time
 import datetime
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime
+import math
+from math import degrees
+from calendar import timegm
 
-LED thread
-def flashLED():
-	LED_PORT = 12 # GPIO pin 18
-	GPIO.setmode(GPIO.BOARD)
-	GPIO.setwarnings(False)
-	GPIO.setup(LED_PORT, GPIO.OUT) # configure GPIO as output
+def seconds_between(d1, d2):
+    return abs((d2 - d1).seconds)
 
-	for count in [1, 2, 3]:
-		GPIO.output(LED_PORT, GPIO.HIGH)
-		time.sleep(0.5) # blocking
-		GPIO.output(LED_PORT, GPIO.LOW)
-		time.sleep(0.5)
+def datetime_from_time(tr):
+    year, month, day, hour, minute, second = tr.tuple()
+    dt = datetime(year, month, day, hour, minute, int(second))
+    return dt
 
-# Audio thread
-def playSound():
-	# CONFIGURE AUDIO
-	pygame.mixer.init()
-	pygame.mixer.music.load('rectrans.wav')
+def get_next_pass(lon, lat, alt, tle):
 
-	# Play the sound
-	pygame.mixer.music.play()
-	while pygame.mixer.music.get_busy() == True:
-		continue
+	sat = ephem.readtle(str(tle[0]), str(tle[1]), str(tle[2]))
 
-def notify():
-	# Flash LED on a separate thread
-	led_thread=Thread(target=flashLED, args=())
-	led_thread.start()
+	observer = ephem.Observer()
+	observer.lat = str(lat)
+	observer.long = str(lon)
+	#observer.elevation = alt
+	observer.pressure = 0
+	observer.horizon = '-0:34'
 
-	# Play sound on a separate thread
-	sound_thread=Thread(target=playSound, args=())
-	sound_thread.start()
+	now = datetime.utcnow()
+	observer.date = now
 
-	# TWILIO CREDENTIALS
-	ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
-	AUTH_TOKEN = "a3b144fabe06b268541eff165f9b1387"
+	tr, azr, tt, altt, ts, azs = observer.next_pass(sat)
 
-	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+	duration = int((ts - tr) *60*60*24)
+	rise_time = datetime_from_time(tr)
+	max_time = datetime_from_time(tt)
+	set_time = datetime_from_time(ts)
 
-	# TWILIO SMS NOTIFICATION TEST
-	# Send this prior to viewable event
-	client.messages.create(
-	to="(703) 286-9168", 
-	from_="+13012653352", 
-	body="The aliens are gonna destroy us!",  
-	)
+	observer.date = max_time
+
+	sun = ephem.Sun()
+	sun.compute(observer)
+	sat.compute(observer)
+
+	sun_alt = math.degrees(sun.alt)
+
+	visible = False
+	if sat.eclipsed is False and -18 < degrees(sun_alt) < -6 :
+		visible = True
+
+	return {
+		"rise_time": timegm(rise_time.timetuple()),
+		"rise_azimuth": degrees(azr),
+		"max_time": timegm(max_time.timetuple()),
+		"max_alt": degrees(altt),
+		"set_time": timegm(set_time.timetuple()),
+		"set_azimuth": degrees(azs),
+		"elevation": sat.elevation,
+		"sun_alt": sun_alt,
+		"duration": duration,
+		"visible": visible
+	}
+
+# LED thread
+# def flashLED():
+# 	LED_PORT = 12 # GPIO pin 18
+# 	GPIO.setmode(GPIO.BOARD)
+# 	GPIO.setwarnings(False)
+# 	GPIO.setup(LED_PORT, GPIO.OUT) # configure GPIO as output
+
+# 	for count in [1, 2, 3]:
+# 		GPIO.output(LED_PORT, GPIO.HIGH)
+# 		time.sleep(0.5) # blocking
+# 		GPIO.output(LED_PORT, GPIO.LOW)
+# 		time.sleep(0.5)
+
+# # Audio thread
+# def playSound():
+# 	# CONFIGURE AUDIO
+# 	pygame.mixer.init()
+# 	pygame.mixer.music.load('rectrans.wav')
+
+# 	# Play the sound
+# 	pygame.mixer.music.play()
+# 	while pygame.mixer.music.get_busy() == True:
+# 		continue
+
+# def notify():
+# 	# Flash LED on a separate thread
+# 	led_thread=Thread(target=flashLED, args=())
+# 	led_thread.start()
+
+# 	# Play sound on a separate thread
+# 	sound_thread=Thread(target=playSound, args=())
+# 	sound_thread.start()
+
+# 	# TWILIO CREDENTIALS
+# 	ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
+# 	AUTH_TOKEN = "a3b144fabe06b268541eff165f9b1387"
+
+# 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+
+# 	# TWILIO SMS NOTIFICATION TEST
+# 	# Send this prior to viewable event
+# 	client.messages.create(
+# 	to="(703) 286-9168", 
+# 	from_="+13012653352", 
+# 	body="The aliens are gonna destroy us!",  
+# 	)
 
 def main(argv):
 
@@ -92,6 +149,8 @@ def main(argv):
 	if (zipCode != None) and (NORAD_CatalogNumber != None):
 
 		g = geocoder.google(zipCode)
+		lat_rad = math.radians(g.lat)
+		lng_rad = math.radians(g.lng)
 		weather_url = 'http://api.openweathermap.org/data/2.5/forecast/daily?lat=' + str(g.lat) + '&lon=' + str(g.lng) + '&cnt=16&APPID=c4758036688a08a0796290e8f5ebbe40'
 		forecast = urllib2.urlopen(weather_url)
 		forecast_json = json.loads(forecast.read())
@@ -101,27 +160,25 @@ def main(argv):
 		for i in range(len(weatherCondition)):
 			weatherCondition[i] = forecast_json["list"][i]["clouds"] <= 20
 
+		print # Print separation 
+
 		NORAD_CatalogNumber_url = 'http://www.celestrak.com/cgi-bin/TLE.pl?CATNR=' + NORAD_CatalogNumber
 		tle = urllib2.urlopen(NORAD_CatalogNumber_url)
 		tle_json = json.loads(json.dumps(tle.read()))
-		print("Printing tle data: ")
-		print (tle_json)
 		parsed_html = BeautifulSoup(tle_json)
 		html_pre = parsed_html.body.find('pre').text
 		pre_lines = html_pre.split('\n')
+		print("Printing tle data: ")
+		print pre_lines[0]
 		line1 = pre_lines[1]
+		print line1
 		line2 = pre_lines[2]
+		print line2
 		tle = ephem.readtle(NORAD_CatalogNumber, line1, line2)
 		start_time = datetime.utcnow()
 		tle.compute(start_time)
-		print(tle.elevation)
-
-
-
-
-
-
-
+		pre_lines[0] = NORAD_CatalogNumber
+		print get_next_pass(lng_rad, lat_rad, tle.elevation, pre_lines)
 
 	##############################################################################
 
