@@ -18,6 +18,7 @@ import time
 def flashLED():
 	LED_PORT = 12 # GPIO pin 18
 	GPIO.setmode(GPIO.BOARD)
+	GPIO.setwarnings(False)
 	GPIO.setup(LED_PORT, GPIO.OUT) # configure GPIO as output
 
 	for count in [1, 2, 3]:
@@ -44,7 +45,7 @@ def notify():
 
 	# Play sound on a separate thread
 	sound_thread=Thread(target=playSound, args=())
-	sound.thread.start()
+	sound_thread.start()
 
 	# TWILIO CREDENTIALS
 	ACCOUNT_SID = "AC9b2ca84eb482f25141612c4184991086"
@@ -57,7 +58,7 @@ def notify():
 	client.messages.create(
 	to="(703) 286-9168", 
 	from_="+13012653352", 
-	body="I just want a different message this time",  
+	body="The aliens are gonna destroy us!",  
 	)
 
 def main(argv):
