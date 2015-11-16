@@ -148,7 +148,7 @@ def notify():
 	to="(703) 286-9168", 
 	from_="+13012653352", 
 	body="The aliens are gonna destroy us! Nah, your satellite is about to be visible.",  
-# 	)
+ 	)
 
 def main(argv):
 
