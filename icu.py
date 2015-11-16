@@ -90,9 +90,8 @@ def get_next_pass(lon, lat, alt, tle):
 		mid_time = rise_time + datetime.timedelta(seconds = duration)
 		rise_time = str(rise_time.timetuple()[0]) + ' ' + str(rise_time.timetuple()[1]) + ' ' + str(rise_time.timetuple()[2]) + ' ' + str(rise_time.timetuple()[3]) + ' ' + str(rise_time.timetuple()[4])
 		set_time = str(set_time.timetuple()[0]) + ' ' + str(set_time.timetuple()[1]) + ' ' + str(set_time.timetuple()[2]) + ' ' + str(set_time.timetuple()[3]) + ' ' + str(set_time.timetuple()[4])
-		print(rise_time)
+		#print(rise_time)
 
-	print
 	return visible
 
 # Global variable to keep track of time.
