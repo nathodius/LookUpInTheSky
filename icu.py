@@ -16,6 +16,7 @@ import time
 import datetime
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime
+import datetime
 import math
 from math import degrees
 from calendar import timegm
@@ -25,7 +26,7 @@ def seconds_between(d1, d2):
 
 def datetime_from_time(tr):
     year, month, day, hour, minute, second = tr.tuple()
-    dt = datetime(year, month, day, hour, minute, int(second))
+    dt = datetime.datetime(year, month, day, hour, minute, int(second))
     return dt
 
 def get_next_pass(lon, lat, alt, tle):
@@ -39,13 +40,14 @@ def get_next_pass(lon, lat, alt, tle):
 	observer.pressure = 0
 	observer.horizon = '-0:34'
 
-	now = datetime.utcnow()
+	now = nextTime = datetime.datetime.utcnow()
 	observer.date = now
 
 	tr, azr, tt, altt, ts, azs = observer.next_pass(sat)
 
 	duration = int((ts - tr) *60*60*24)
 	rise_time = datetime_from_time(tr)
+	mid_time = rise_time + datetime.timedelta(seconds = duration)
 	max_time = datetime_from_time(tt)
 	set_time = datetime_from_time(ts)
 
@@ -55,30 +57,49 @@ def get_next_pass(lon, lat, alt, tle):
 	sun.compute(observer)
 	sat.compute(observer)
 
-	sun_alt = math.degrees(sun.alt)
+	sun_alt = round(math.degrees(sun.alt)) 
 
-	visible = False
-	if sat.eclipsed is False and -18 < degrees(sun_alt) < -6 :
-		visible = True
+	rise_time = str(rise_time.timetuple()[0]) + ' ' + str(rise_time.timetuple()[1]) + ' ' + str(rise_time.timetuple()[2]) + ' ' + str(rise_time.timetuple()[3]) + ' ' + str(rise_time.timetuple()[4])
 
-	return {
-		"rise_time": timegm(rise_time.timetuple()),
-		"rise_azimuth": degrees(azr),
-		"max_time": timegm(max_time.timetuple()),
-		"max_alt": degrees(altt),
-		"set_time": timegm(set_time.timetuple()),
-		"set_azimuth": degrees(azs),
-		"elevation": sat.elevation,
-		"sun_alt": sun_alt,
-		"duration": duration,
-		"visible": visible
-	}
+	set_time = str(set_time.timetuple()[0]) + ' ' + str(set_time.timetuple()[1]) + ' ' + str(set_time.timetuple()[2]) + ' ' + str(set_time.timetuple()[3]) + ' ' + str(set_time.timetuple()[4])
+
+	visible = [None]*5
+
+	while None in visible:
+		if sat.eclipsed is False and -25 < sun_alt < -10 :
+			#riseTime[]
+			for index in range(5):
+				if visible[index] is None:
+					visible[index] = mid_time
+					break
+					
+		#else:
+		# Change time.
+		# Check out the next pass.
+		nextTime = nextTime + datetime.timedelta(hours = 1)
+		observer.date = nextTime
+		sun = ephem.Sun()
+		sun.compute(observer)
+		sat.compute(observer)
+		sun_alt = round(math.degrees(sun.alt)) 
+		tr, azr, tt, altt, ts, azs = observer.next_pass(sat)
+		duration = int((ts - tr) *60*60*24)
+		rise_time = datetime_from_time(tr)
+		max_time = datetime_from_time(tt)
+		set_time = datetime_from_time(ts)
+		mid_time = rise_time + datetime.timedelta(seconds = duration)
+		rise_time = str(rise_time.timetuple()[0]) + ' ' + str(rise_time.timetuple()[1]) + ' ' + str(rise_time.timetuple()[2]) + ' ' + str(rise_time.timetuple()[3]) + ' ' + str(rise_time.timetuple()[4])
+		set_time = str(set_time.timetuple()[0]) + ' ' + str(set_time.timetuple()[1]) + ' ' + str(set_time.timetuple()[2]) + ' ' + str(set_time.timetuple()[3]) + ' ' + str(set_time.timetuple()[4])
+		print(rise_time)
+
+	print
+	return visible
 
 # Global variable to keep track of time.
 # Audio and LED notifications should be on for 10 mins
 snap_time = time.time() # Gets current time in seconds
 
-# LED thread
+#LED thread
 def flashLED():
 	LED_PORT = 12 # GPIO pin 18
 	GPIO.setmode(GPIO.BOARD)
@@ -128,9 +149,11 @@ def notify():
 	to="(703) 286-9168", 
 	from_="+13012653352", 
 	body="The aliens are gonna destroy us! Nah, your satellite is about to be visible.",  
-	)
+# 	)
 
 def main(argv):
+
+	print # blank line
 
 	# notify()
 
@@ -165,9 +188,12 @@ def main(argv):
 		forecast_json = json.loads(forecast.read())
 		print("Printing 16-day forecast: ")
 		print (forecast_json)
-		weatherCondition = [False] * 16
-		for i in range(len(weatherCondition)):
-			weatherCondition[i] = forecast_json["list"][i]["clouds"] <= 20
+		weatherCondition = [False]*16
+		for i in range(16):
+			if forecast_json["list"][i]["clouds"] <= 20:
+				weatherCondition[i] = True
+
+
 
 		print # Print separation 
 
@@ -184,10 +210,23 @@ def main(argv):
 		line2 = pre_lines[2]
 		print line2
 		tle = ephem.readtle(NORAD_CatalogNumber, line1, line2)
-		start_time = datetime.utcnow()
+		start_time = datetime.datetime.utcnow()
 		tle.compute(start_time)
-		pre_lines[0] = NORAD_CatalogNumber
-		print get_next_pass(lng_rad, lat_rad, tle.elevation, pre_lines)
+		#pre_lines[0] = NORAD_CatalogNumber
+		satTimes = get_next_pass(lng_rad, lat_rad, tle.elevation, pre_lines)
+
+		print
+
+		print satTimes
+		notify()
+
+		# for i in range(5):
+		# 	#print satTimes[i]
+		# 	for j in range(len(weatherCondition)):
+		# 		#print weatherCondition[j]
+		# 		if weatherCondition[j] == True and ( (satTimes[i] - (datetime.datetime.now() + datetime.timedelta(days = j))).seconds < 12000  ):
+		# 			print ("match at", i, j)
+
 
 
 if __name__ == "__main__":
